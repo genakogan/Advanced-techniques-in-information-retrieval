@@ -1,0 +1,5 @@
+fitz
+pandas
+nltk<br
+summarizer
+rouge-score
