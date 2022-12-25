@@ -1,5 +1,5 @@
 fitz
 pandas
-nltk<br
+nltk
 summarizer
 rouge-score
