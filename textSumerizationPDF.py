@@ -30,7 +30,10 @@ from docx.text.paragraph import Paragraph
 
 class TextSumerizationPDF():
     def __init__(self,name_pdf):
+
         self.pdf_file = name_pdf
+
+
         self.total_text = self.read_only_pdf_text()
         self.text_without_abstract, self.orginal_abstract = self.remove_abstract_from_pdf()
         self.text_after_reprocessing = self.pdf_preprocessing()
@@ -72,17 +75,39 @@ class TextSumerizationPDF():
 
 
     def read_only_pdf_text(self):
+
         word_file = "text_word.docx"
+
+        # A wrapped method parse() to convert all/specified pdf pages to docx. 
+        # Multi-processing is supported in case pdf file with a large number of pages.
         parse(self.pdf_file, word_file, start=0, end=None)
+
+        # process extract text and lower() method 
+        # returns a string where all characters are lower case.
         pdf_all_data = docx2txt.process(word_file).lower()
+        
         # remove all text after references words
         text_without_references = pdf_all_data.split('references', 1)[0]
+
+        # Return a |Document| object loaded from *docx*, where *docx* can be
+        # either a path to a ``.docx`` file (a string) or a file-like object. If
+        # *docx* is missing or ``None``, the built-in default document "template"
+        # is loaded.
         document = Document()
+        
+        # This method returns a reference to a paragraph, newly added paragraph
+        #  at the end of the document. In this case all text without references.
         document.add_paragraph(text_without_references)
+
+        # Save new documents
         document.save('only_text.docx')
+
         total_text = []
+
         # remove tables and images
         document = Document('only_text.docx')
+
+        # iter_block_items help function in line 54
         for item in self.iter_block_items(document):
             total_text.append(item.text if isinstance(item, Paragraph) else '<table>')
         return "".join(total_text)
