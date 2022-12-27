@@ -30,16 +30,16 @@ from docx.text.paragraph import Paragraph
 
 class TextSumerizationPDF():
     def __init__(self,name_pdf):
+
         self.pdf_file = name_pdf
+
+
         self.total_text = self.read_only_pdf_text()
         self.text_without_abstract, self.orginal_abstract = self.remove_abstract_from_pdf()
         self.text_after_reprocessing = self.pdf_preprocessing()
-
-        # Return the number of items in a abstrcact.
         self.len_abstract = len(self.orginal_abstract.split('.'))
         self.all_blocks = self.get_blocks_from_pdf()
         self.df_pages = self.get_data_from_blocks()
-        
         # -------------------------------------------------------------------models and result
         self.model_abstract = self.bert_extractive_summarizer()
         print("bert_extractive_summarizer: " + self.model_abstract)
@@ -61,26 +61,15 @@ class TextSumerizationPDF():
         """
         if isinstance(parent, _Document):
             parent_elm = parent.element.body
-           
-            print(parent_elm)
-        # isinstance() function checks whether the object or variable 
-        # is an instance of the specified class type or data type  
+            # print(parent_elm.xml)
         elif isinstance(parent, _Cell):
             parent_elm = parent._tc
         else:
             raise ValueError("something's not right")
 
         for child in parent_elm.iterchildren():
-
-            # ``<w:p>`` element, containing the properties and text for a paragraph.
             if isinstance(child, CT_P):
-
-                # yield keyword is used to create a generator function. 
-                # A type of function that is memory efficient and can be 
-                # used like an iterator object.
                 yield Paragraph(child, parent)
-
-                # ``<w:tbl>`` element
             elif isinstance(child, CT_Tbl):
                 yield Table(child, parent)
 
@@ -117,6 +106,7 @@ class TextSumerizationPDF():
 
         # remove tables and images
         document = Document('only_text.docx')
+
         # iter_block_items help function in line 54
         for item in self.iter_block_items(document):
             total_text.append(item.text if isinstance(item, Paragraph) else '<table>')
@@ -124,7 +114,6 @@ class TextSumerizationPDF():
 
 
     def remove_abstract_from_pdf(self):
-    
         split_page = self.total_text.split('.')
         abstract_sent=[sentence + '.' for sentence in split_page if 'abstract' in sentence][0]
         abstract_sent= abstract_sent[abstract_sent.find('abstract'):]
@@ -136,67 +125,44 @@ class TextSumerizationPDF():
         return  text_without_abstract, orginal_abstract
 
     def data_preprocessing(self, row):
-
         # Lowering letters
         row = row.str.lower()
-
         # remove fig and table tag
         row = row.str.replace("fig.", "")
         row = row.str.replace("<table>", "")
-
         # Removing html tags
         row = row.str.replace(r'<[^<>]*>', ' ', regex=True)
-
         # Removing urls
         row = row.str.replace(r'http\S+', ' ', regex=True)
         row = row.str.replace(r'www\S+', ' ', regex=True)
-
         # remove ascii
         row = row.str.replace('(([\\xbc-\\xbe])?)', '')
-
         # row = row.str.replace(r'[^\x00-\x7F\x80-\xFF\u0100-\u017F\u0180-\u024F\u1E00-\u1EFF]', '')
         # row = row.str.encode('ascii', 'ignore').str.decode('ascii')
         # Removing numbers
         row = row.str.replace('\d+', ' ')
-
         # Remove special characers
         row = row.str.replace('\W', ' ')
-
         # Distribution of tokens
         row = row.apply(word_tokenize)
-
         # Remove stopwords
         stop_words = set(stopwords.words('english'))
         row =row.apply(lambda x: [item for item in x if item not in stop_words])
-
         # Remove roman numbers
         roman_numbers = ['i','ii', 'iii', 'iv', 'v','vi', 'vii', 'viii']
         row =row.apply(lambda x: [item for item in x if item not in roman_numbers])
-
         # Convert lists to strings
         row = row.apply(lambda x: ' '.join(map(str, x)))
         return row
 
 
     def pdf_preprocessing(self):
-
-        # Return a sentence-tokenized copy of *text*, using NLTK's recommended sentence tokenizer
-        # (currently :class:`.PunktSentenceTokenizer` for the specified language).
-        # :param text: text to split into sentences
-        # :param language: the model name in the Punkt corpus
         sentenceSplit = tokenize.sent_tokenize(self.text_without_abstract)
-
-        # Data structure also contains labeled axes (rows and columns).
-        # Arithmetic operations align on both row and column labels. Can be
-        # thought of as a dict-like container for Series objects. The primary
-        # pandas data structure.
         df = pd.DataFrame(sentenceSplit,columns =['Sentence'])
-
-        # data_preprocessing help function for dropping data before it is 
-        # used in order to ensure or enhance performance. line: 140
         df["Sentence"] = self.data_preprocessing(df["Sentence"])
         df =pd.DataFrame(['. '.join(df['Sentence'].to_list())], columns=['Sentence'])
-        return df.values.tolist()[0][0]
+        text_after_reprocessing = df.values.tolist()[0][0]
+        return text_after_reprocessing
 
     def evaluation(self, model_abstract):
         scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
@@ -204,7 +170,6 @@ class TextSumerizationPDF():
         return scores
 
     def bert_extractive_summarizer(self):
-        "bert-extractive model"
         model = Summarizer()
         model_abstract = model(self.text_after_reprocessing, num_sentences=self.len_abstract)
         scores = self.evaluation(model_abstract)
@@ -212,7 +177,6 @@ class TextSumerizationPDF():
         return model_abstract
 
     def GPT2(self):
-        "GPT2 glutamic--pyruvic transaminase 2 model"
         GPT2_model = TransformerSummarizer(transformer_type="GPT2",transformer_model_key="gpt2-medium")
         model_abstract = ''.join(GPT2_model(self.text_after_reprocessing, num_sentences=self.len_abstract))
         scores = self.evaluation(model_abstract)
@@ -222,8 +186,6 @@ class TextSumerizationPDF():
     def get_blocks_from_pdf(self):
         all_blocks =[]
         for page in fitz.open(self.pdf_file):
-
-            # “blocks”: generate a list of text blocks (= paragraphs).
             all_blocks.append(page.get_text("blocks"))
         return  all_blocks
 
@@ -251,13 +213,10 @@ class TextSumerizationPDF():
         return paragraphDf
 
     def get_data_from_blocks(self):
-
         all_data_blocks = [(page_ind,) + tup for page_ind in range(len(self.all_blocks)) for tup in
                            self.all_blocks[page_ind]]
-      
         df_blocks = pd.DataFrame(all_data_blocks,
                                  columns=['page', 'x0', 'y0', 'x1', 'y1', 'text', 'line', 'img/text_index'])
-       
         df_blocks = df_blocks[df_blocks["img/text_index"] == 0]
         df_blocks = df_blocks[['page', 'text', 'line']]
         df_blocks["text"] = self.data_preprocessing(df_blocks["text"])
@@ -270,7 +229,6 @@ class TextSumerizationPDF():
             {'text': ' '.join, 'line': lambda x: x.tolist(), 'paragraph': lambda x: x.tolist()}).reset_index()
         all_paragraph = self.conect_paragraph_to_each_line(df_pages)
         df_pages['paragraph'] = pd.DataFrame([all_paragraph]).T
-
         return df_pages
 
     def get_data_of_result(self, save_file_name):
@@ -289,5 +247,5 @@ class TextSumerizationPDF():
         return tableDF
 
 if __name__ == "__main__":
-    name_pdf = '3.pdf'
+    name_pdf = '2.pdf'
     TextSumerizationPDF(name_pdf)
