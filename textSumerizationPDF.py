@@ -43,11 +43,15 @@ class TextSumerizationPDF():
         # -------------------------------------------------------------------models and result
         self.model_abstract = self.bert_extractive_summarizer()
         print("bert_extractive_summarizer: " + self.model_abstract)
+
+        # get_data_of_result help function in line 
         self.tableDF = self.get_data_of_result('bert_results')
         print(self.tableDF)
 
         self.model_abstract = self.GPT2()
         print("GPT2: " + self.model_abstract)
+
+        # get_data_of_result help function in line 
         self.tableDF = self.get_data_of_result('GPT2_results')
         print(self.tableDF)
 
@@ -186,7 +190,10 @@ class TextSumerizationPDF():
     def get_blocks_from_pdf(self):
         all_blocks =[]
         for page in fitz.open(self.pdf_file):
+
+             # “blocks”: generate a list of text blocks (= paragraphs).
             all_blocks.append(page.get_text("blocks"))
+   
         return  all_blocks
 
     def conect_paragraph_to_each_line(self, df_pages):
@@ -204,10 +211,19 @@ class TextSumerizationPDF():
         paragraphDf = pd.DataFrame()
         df_blocks['paragraph_length'] = df_blocks['text'].str.split().apply(len)
         paragraphDf = df_blocks[df_blocks['paragraph_length'] <= 4]
+
         paragraphDf['text'] = paragraphDf['text'].str.lower()
+
+        # find if there is a substring such that it has @|–|www|references
         paragraphDf = paragraphDf[~paragraphDf["text"].str.contains('(@|–|www|references)', regex=True)]
+
+        # data_preprocessing help function
         paragraphDf["text"] = self.data_preprocessing(paragraphDf["text"])
+    
+        # Access group of values using labels.
         paragraphDf = paragraphDf.loc[paragraphDf["text"] != '']
+
+        # Pandas rename() method is used to rename any index, column or row.
         paragraphDf = paragraphDf[['page', 'line', 'text']].rename(
             columns={'page': 'page_paragraph', 'line': 'line_paragraph', 'text': 'paragraph'})
         return paragraphDf
@@ -217,18 +233,34 @@ class TextSumerizationPDF():
                            self.all_blocks[page_ind]]
         df_blocks = pd.DataFrame(all_data_blocks,
                                  columns=['page', 'x0', 'y0', 'x1', 'y1', 'text', 'line', 'img/text_index'])
+
+
         df_blocks = df_blocks[df_blocks["img/text_index"] == 0]
         df_blocks = df_blocks[['page', 'text', 'line']]
+
+        # data_preprocessing help function in lne
         df_blocks["text"] = self.data_preprocessing(df_blocks["text"])
 
+        # get_data_of_paragraph help function in line
         paragraphDf = self.get_data_of_paragraph(df_blocks)
+
+        # Access group of values using labels.
         df_blocks = df_blocks.loc[df_blocks["text"] != '']
+
+        # Pandas concat() method is used to concatenate pandas objects such as DataFrames and Series.
+        # if axis=1, then column-wise concatenation is performed
         all_data_sent = pd.concat([df_blocks, paragraphDf], axis=1)
         all_data_sent = all_data_sent[['page', 'text', 'line', 'paragraph']]
+
+        # The agg() method allows to apply a function or a list of function names to be executed 
+        # along one of the axis of the DataFrame, default 0, which is the index (row) axis.
         df_pages = all_data_sent.groupby('page').agg(
             {'text': ' '.join, 'line': lambda x: x.tolist(), 'paragraph': lambda x: x.tolist()}).reset_index()
+
+        # conect_paragraph_to_each_line help function in line
         all_paragraph = self.conect_paragraph_to_each_line(df_pages)
         df_pages['paragraph'] = pd.DataFrame([all_paragraph]).T
+
         return df_pages
 
     def get_data_of_result(self, save_file_name):
