@@ -1,5 +1,6 @@
-fitz
-pandas
-nltk
-summarizer
-rouge-score
+pdf2docx
+docx2txt
+pandasnltk
+bert_extractive_summarizer
+torch
+rouge_score
