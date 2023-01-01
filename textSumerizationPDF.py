@@ -129,32 +129,43 @@ class TextSumerizationPDF():
         return  text_without_abstract, orginal_abstract
 
     def data_preprocessing(self, row):
+
         # Lowering letters
         row = row.str.lower()
+
         # remove fig and table tag
         row = row.str.replace("fig.", "")
         row = row.str.replace("<table>", "")
+
         # Removing html tags
         row = row.str.replace(r'<[^<>]*>', ' ', regex=True)
+
         # Removing urls
         row = row.str.replace(r'http\S+', ' ', regex=True)
         row = row.str.replace(r'www\S+', ' ', regex=True)
+        
         # remove ascii
         row = row.str.replace('(([\\xbc-\\xbe])?)', '')
         # row = row.str.replace(r'[^\x00-\x7F\x80-\xFF\u0100-\u017F\u0180-\u024F\u1E00-\u1EFF]', '')
         # row = row.str.encode('ascii', 'ignore').str.decode('ascii')
+
         # Removing numbers
         row = row.str.replace('\d+', ' ')
+
         # Remove special characers
         row = row.str.replace('\W', ' ')
+
         # Distribution of tokens
         row = row.apply(word_tokenize)
+
         # Remove stopwords
         stop_words = set(stopwords.words('english'))
         row =row.apply(lambda x: [item for item in x if item not in stop_words])
+
         # Remove roman numbers
         roman_numbers = ['i','ii', 'iii', 'iv', 'v','vi', 'vii', 'viii']
         row =row.apply(lambda x: [item for item in x if item not in roman_numbers])
+
         # Convert lists to strings
         row = row.apply(lambda x: ' '.join(map(str, x)))
         return row
@@ -163,6 +174,8 @@ class TextSumerizationPDF():
     def pdf_preprocessing(self):
         sentenceSplit = tokenize.sent_tokenize(self.text_without_abstract)
         df = pd.DataFrame(sentenceSplit,columns =['Sentence'])
+
+        # data_preprocessing help function, line 
         df["Sentence"] = self.data_preprocessing(df["Sentence"])
         df =pd.DataFrame(['. '.join(df['Sentence'].to_list())], columns=['Sentence'])
         text_after_reprocessing = df.values.tolist()[0][0]
@@ -279,5 +292,5 @@ class TextSumerizationPDF():
         return tableDF
 
 if __name__ == "__main__":
-    name_pdf = '2.pdf'
+    name_pdf = '10.pdf'
     TextSumerizationPDF(name_pdf)
