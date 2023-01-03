@@ -2,11 +2,12 @@
 
 
 ### Requirements
-  1. fitz<br />
-  2. pandas<br />
-  3. nltk<br />
-  4. summarizer<br />
+  1. pdf2docx<br />
+  2. docx2txt<br />
+  3. pandasnltk<br />
+  4. bert_extractive_summarizer<br />
   5. rouge-score<br />
+  6. torch<br />
   If you are managing Python packages (libraries) with pip, you can use the configuration file req.txt to install the specified packages with the specified version.<br />
 
   ### How to Run Your Program (Windows)
